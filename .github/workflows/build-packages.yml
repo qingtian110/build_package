@@ -116,4 +116,4 @@ jobs:
         if: matrix.tag == 'openwrt-25.12'
         run: |
           sshpass -p ${{ secrets.server_password }} ssh -o StrictHostKeyChecking=no root@${{ secrets.ftp_address }} >/dev/null 2>&1
-          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/akg-sign ${{ matrix.tag }} ${{ matrix.arch }}"
+          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/apk-sign ${{ matrix.tag }} ${{ matrix.arch }}"
