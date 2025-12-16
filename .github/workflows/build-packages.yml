@@ -16,39 +16,7 @@ jobs:
       fail-fast: false
       matrix:
         arch:
-          - aarch64_cortex-a53
-          - aarch64_cortex-a72
-          - aarch64_cortex-a76
-          - aarch64_generic
-          - arm_arm1176jzf-s_vfp
-          - arm_arm926ej-s
-          - arm_cortex-a15_neon-vfpv4
-          - arm_cortex-a5_vfpv4
-          - arm_cortex-a7
-          - arm_cortex-a7_neon-vfpv4
-          - arm_cortex-a7_vfpv4
-          - arm_cortex-a8_vfpv3
-          - arm_cortex-a9
-          - arm_cortex-a9_neon
-          - arm_cortex-a9_vfpv3-d16
-          - arm_fa526
-          - arm_xscale
-          - armeb_xscale
-          - i386_pentium-mmx
-          - i386_pentium4
-          - loongarch64_generic
-          - mips64_mips64r2
-          - mips64_octeonplus
-          - mips64el_mips64r2
-          - mips_24kc
-          - mips_4kec
-          - mips_mips32
-          - mipsel_24kc
-          - mipsel_24kc_24kf
-          - mipsel_74kc
-          - mipsel_mips32
           - riscv64_riscv64
-          - x86_64
         tag:
           - openwrt-24.10
           - openwrt-25.12
@@ -66,10 +34,19 @@ jobs:
         run: |
           sed -i 's/$(BPF_DEPENDS)//g' daed/Makefile
 
+      - name: Compute ARCH / effective arch
+        run: |
+          if [ "${{ matrix.tag }}" = "openwrt-25.12" ] && [ "${{ matrix.arch }}" = "riscv64_riscv64" ]; then
+            echo "EFFECTIVE_ARCH=riscv64_generic" >> $GITHUB_ENV
+            echo "ARCH=riscv64_generic-${{ matrix.tag }}" >> $GITHUB_ENV
+          else
+            echo "EFFECTIVE_ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
+            echo "ARCH=${{ matrix.arch }}-${{ matrix.tag }}" >> $GITHUB_ENV
+          fi
+
       - name: Build Packages
         uses: sbwml/openwrt-gh-action-sdk@helloworld
         env:
-          ARCH: ${{ matrix.arch }}-${{ matrix.tag }}
           FEEDNAME: packages_ci
           PACKAGES: dns2socks
           NO_REFRESH_CHECK: true
@@ -78,10 +55,7 @@ jobs:
       - name: Create compress files
         continue-on-error: true
         run: |
-          if [ "${{ matrix.arch }}" = "riscv64_riscv64" ] && [ "${{ matrix.tag }}" = "openwrt-25.12" ]; then
-            mv bin/packages/riscv64_generic bin/packages/riscv64_riscv64 || true
-          fi
-          tar -zcvf ${{ matrix.tag }}-${{ matrix.arch }}.tar.gz -C bin/packages/${{ matrix.arch }}/ packages_ci
+          tar -zcvf ${{ env.ARCH }}.tar.gz -C bin/packages/${{ env.EFFECTIVE_ARCH }}/ packages_ci
           echo "latest_release=$(TZ='Asia/Shanghai' date +%Y-%m-%d)" >>$GITHUB_ENV
 
       - name: Create release
@@ -94,7 +68,7 @@ jobs:
           commit: main
           replacesArtifacts: true
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: ${{ matrix.tag }}-${{ matrix.arch }}.tar.gz
+          artifacts: ${{ env.ARCH }}.tar.gz
 
       - name: Upload FTP
         uses: sbwml/FTP-Deploy-Action@master
@@ -102,18 +76,18 @@ jobs:
           server: ${{ secrets.ftp_address }}
           username: ${{ secrets.ftp_username }}
           password: ${{ secrets.ftp_password }}
-          server-dir: ${{ matrix.tag }}/${{ matrix.arch }}/
-          local-dir: bin/packages/${{ matrix.arch }}/packages_ci/
+          server-dir: ${{ matrix.tag }}/${{ env.EFFECTIVE_ARCH }}/
+          local-dir: bin/packages/${{ env.EFFECTIVE_ARCH }}/packages_ci/
           dangerous-clean-slate: true
 
       - name: Create metadata (ipk)
         if: matrix.tag == 'openwrt-24.10'
         run: |
           sshpass -p ${{ secrets.server_password }} ssh -o StrictHostKeyChecking=no root@${{ secrets.ftp_address }} >/dev/null 2>&1
-          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/opkg-sign ${{ matrix.tag }} ${{ matrix.arch }}"
+          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/opkg-sign ${{ matrix.tag }} ${{ env.EFFECTIVE_ARCH }}"
 
       - name: Create metadata (apk)
         if: matrix.tag == 'openwrt-25.12'
         run: |
           sshpass -p ${{ secrets.server_password }} ssh -o StrictHostKeyChecking=no root@${{ secrets.ftp_address }} >/dev/null 2>&1
-          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/apk-sign ${{ matrix.tag }} ${{ matrix.arch }}"
+          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/apk-sign ${{ matrix.tag }} ${{ env.EFFECTIVE_ARCH }}"
