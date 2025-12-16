@@ -5,6 +5,9 @@ on:
   schedule:
     - cron: 0 16 * * *
 
+permissions:
+  contents: write
+
 jobs:
   build:
     name: Build ${{ matrix.arch }}-${{ matrix.tag }}
@@ -48,6 +51,7 @@ jobs:
           - x86_64
         tag:
           - openwrt-24.10
+          - openwrt-25.12
 
     steps:
       - uses: actions/checkout@v4
@@ -67,16 +71,30 @@ jobs:
         env:
           ARCH: ${{ matrix.arch }}-${{ matrix.tag }}
           FEEDNAME: packages_ci
-          PACKAGES: chinadns-ng daed dns2socks dns2socks-rust dns2tcp geoview hysteria ipt2socks lua-neturl luci-app-daed luci-app-homeproxy luci-app-nikki luci-app-openclash luci-app-passwall luci-app-passwall2 luci-app-ssr-plus microsocks naiveproxy pdnsd redsocks2 shadow-tls shadowsocks-libev shadowsocks-rust shadowsocksr-libev simple-obfs sing-box tcping trojan trojan-plus tuic-client v2ray-core v2ray-geodata v2ray-plugin xray-core xray-plugin
-          KEY_BUILD: ${{ secrets.sign_key }}
+          PACKAGES: dns2socks
           NO_REFRESH_CHECK: true
           IGNORE_ERRORS: true
 
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v4
+      - name: Create compress files
+        continue-on-error: true
+        run: |
+          if [ "${{ matrix.arch }}" = "riscv64_riscv64" ] && [ "${{ matrix.tag }}" = "openwrt-25.12" ]; then
+            mv bin/packages/riscv64_generic bin/packages/riscv64_riscv64 || true
+          fi
+          tar -zcvf ${{ matrix.tag }}-${{ matrix.arch }}.tar.gz -C bin/packages/${{ matrix.arch }}/ packages_ci
+          echo "latest_release=$(TZ='Asia/Shanghai' date +%Y-%m-%d)" >>$GITHUB_ENV
+
+      - name: Create release
+        continue-on-error: true
+        uses: ncipollo/release-action@v1
         with:
-          name: ${{ matrix.tag }}-${{ matrix.arch }}
-          path: bin/packages/${{ matrix.arch }}/packages_ci/*.ipk
+          name: ${{ env.latest_release }}
+          allowUpdates: true
+          tag: ${{ env.latest_release }}
+          commit: main
+          replacesArtifacts: true
+          token: ${{ secrets.GITHUB_TOKEN }}
+          artifacts: ${{ matrix.tag }}-${{ matrix.arch }}.tar.gz
 
       - name: Upload FTP
         uses: sbwml/FTP-Deploy-Action@master
@@ -88,7 +106,14 @@ jobs:
           local-dir: bin/packages/${{ matrix.arch }}/packages_ci/
           dangerous-clean-slate: true
 
-      - name: Create metadata
+      - name: Create metadata (ipk)
+        if: matrix.tag == 'openwrt-24.10'
         run: |
           sshpass -p ${{ secrets.server_password }} ssh -o StrictHostKeyChecking=no root@${{ secrets.ftp_address }} >/dev/null 2>&1
           sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/opkg-sign ${{ matrix.tag }} ${{ matrix.arch }}"
+
+      - name: Create metadata (apk)
+        if: matrix.tag == 'openwrt-25.12'
+        run: |
+          sshpass -p ${{ secrets.server_password }} ssh -o StrictHostKeyChecking=no root@${{ secrets.ftp_address }} >/dev/null 2>&1
+          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/akg-sign ${{ matrix.tag }} ${{ matrix.arch }}"
