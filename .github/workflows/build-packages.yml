@@ -54,15 +54,11 @@ jobs:
           - openwrt-25.12
 
     steps:
-      - uses: actions/checkout@v4
-        with:
-          repository: sbwml/openwrt_helloworld
-          path: helloworld
-
-      - uses: actions/checkout@v4
-        with:
-          repository: sbwml/luci-app-mosdns
-          path: mosdns
+      - name: Clone
+        run: |
+          git clone https://github.com/sbwml/openwrt_helloworld helloworld
+          git clone https://github.com/sbwml/luci-app-mosdns mosdns
+          git clone https://github.com/sbwml/feeds_packages_lang_node-prebuilt node
 
       - name: Free disk space
         run: |
@@ -86,7 +82,7 @@ jobs:
         uses: sbwml/openwrt-gh-action-sdk@helloworld
         env:
           FEEDNAME: packages_ci
-          PACKAGES: chinadns-ng daed dns2socks dns2socks-rust dns2tcp geoview hysteria ipt2socks lua-neturl luci-app-daed luci-app-homeproxy luci-app-mosdns luci-app-nikki luci-app-openclash luci-app-passwall luci-app-passwall2 luci-app-ssr-plus microsocks mosdns naiveproxy pdnsd redsocks2 shadow-tls shadowsocks-libev shadowsocks-rust shadowsocksr-libev simple-obfs sing-box tcping trojan trojan-plus tuic-client v2ray-core v2ray-geodata v2ray-plugin xray-core xray-plugin
+          PACKAGES: chinadns-ng daed dns2socks dns2socks-rust dns2tcp geoview hysteria ipt2socks lua-neturl luci-app-daed luci-app-homeproxy luci-app-mosdns luci-app-nikki luci-app-openclash luci-app-passwall luci-app-passwall2 luci-app-ssr-plus microsocks mosdns naiveproxy node pdnsd redsocks2 shadow-tls shadowsocks-libev shadowsocks-rust shadowsocksr-libev simple-obfs sing-box tcping trojan trojan-plus tuic-client v2ray-core v2ray-geodata v2ray-plugin xray-core xray-plugin
           NO_REFRESH_CHECK: true
           IGNORE_ERRORS: true
 
