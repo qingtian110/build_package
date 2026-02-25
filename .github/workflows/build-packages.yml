@@ -85,6 +85,7 @@ jobs:
           PACKAGES: chinadns-ng daed dns2socks dns2socks-rust dns2tcp geoview hysteria ipt2socks lua-neturl luci-app-daed luci-app-homeproxy luci-app-mosdns luci-app-nikki luci-app-openclash luci-app-passwall luci-app-passwall2 luci-app-ssr-plus microsocks mosdns naiveproxy node pdnsd redsocks2 shadow-tls shadowsocks-libev shadowsocks-rust shadowsocksr-libev simple-obfs sing-box tcping trojan trojan-plus tuic-client v2ray-core v2ray-geodata v2ray-plugin xray-core xray-plugin
           NO_REFRESH_CHECK: true
           IGNORE_ERRORS: true
+          CONTAINER: ${{ (matrix.tag == 'openwrt-25.12' && matrix.arch == 'mips_4kec') && 'ghcr.io/openwrt/sdk@sha256:1e199d8840e34a0aaf1362d1d1b7e754cee94a0f0c675690d51d89ec303492bf' || format('ghcr.io/openwrt/sdk:{0}', matrix.arch) }}
 
       - name: Create compress files
         continue-on-error: true
