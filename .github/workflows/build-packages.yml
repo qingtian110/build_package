@@ -70,12 +70,12 @@ jobs:
 
       - name: Compute ARCH / effective arch
         run: |
-          echo "SKIP=0" >> $GITHUB_ENV
+          echo "SKIP_BUILD=0" >> $GITHUB_ENV
           if [ "${{ matrix.tag }}" = "openwrt-25.12" ] && [ "${{ matrix.arch }}" = "riscv64_riscv64" ]; then
             echo "EFFECTIVE_ARCH=riscv64_generic" >> $GITHUB_ENV
             echo "ARCH=riscv64_generic-${{ matrix.tag }}" >> $GITHUB_ENV
           elif [ "${{ matrix.tag }}" = "openwrt-25.12" ] && [ "${{ matrix.arch }}" = "mips_4kec" ]; then
-            echo "SKIP=1" >> $GITHUB_ENV
+            echo "SKIP_BUILD=1" >> $GITHUB_ENV
           else
             echo "EFFECTIVE_ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
             echo "ARCH=${{ matrix.arch }}-${{ matrix.tag }}" >> $GITHUB_ENV
