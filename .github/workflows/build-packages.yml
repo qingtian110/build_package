@@ -84,7 +84,6 @@ jobs:
           echo "NEW_ARCH=$ARCH" >> $GITHUB_ENV
 
       - name: Build Packages
-        if: ${{ matrix.tag = 'openwrt-25.12' && "${{ matrix.arch }}" != "riscv64_riscv64" }}
         uses: sbwml/openwrt-gh-action-sdk@helloworld
         env:
           FEEDNAME: packages_ci
