@@ -73,24 +73,29 @@ jobs:
           if [ "${{ matrix.tag }}" = "openwrt-25.12" ] && [ "${{ matrix.arch }}" = "riscv64_riscv64" ]; then
             echo "EFFECTIVE_ARCH=riscv64_generic" >> $GITHUB_ENV
             echo "ARCH=riscv64_generic-${{ matrix.tag }}" >> $GITHUB_ENV
+          elif [ "${{ matrix.tag }}" = "openwrt-25.12" ] && [ "${{ matrix.arch }}" = "mips_4kec" ]; then
+            echo "EFFECTIVE_ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
+            echo "CONTAINER=ghcr.io/openwrt/sdk@sha256" >> $GITHUB_ENV
+            echo "ARCH=1e199d8840e34a0aaf1362d1d1b7e754cee94a0f0c675690d51d89ec303492bf" >> $GITHUB_ENV
           else
             echo "EFFECTIVE_ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
             echo "ARCH=${{ matrix.arch }}-${{ matrix.tag }}" >> $GITHUB_ENV
           fi
+          echo "NEW_ARCH=$ARCH" >> $GITHUB_ENV
 
       - name: Build Packages
+        if: ${{ matrix.tag = 'openwrt-25.12' && "${{ matrix.arch }}" != "riscv64_riscv64" }}
         uses: sbwml/openwrt-gh-action-sdk@helloworld
         env:
           FEEDNAME: packages_ci
           PACKAGES: chinadns-ng daed dns2socks dns2socks-rust dns2tcp geoview hysteria ipt2socks lua-neturl luci-app-daed luci-app-homeproxy luci-app-mosdns luci-app-nikki luci-app-openclash luci-app-passwall luci-app-passwall2 luci-app-ssr-plus microsocks mosdns naiveproxy node pdnsd redsocks2 shadow-tls shadowsocks-libev shadowsocks-rust shadowsocksr-libev simple-obfs sing-box tcping trojan trojan-plus tuic-client v2ray-core v2ray-geodata v2ray-plugin xray-core xray-plugin
           NO_REFRESH_CHECK: true
           IGNORE_ERRORS: true
-          CONTAINER: ${{ (matrix.tag == 'openwrt-25.12' && matrix.arch == 'mips_4kec') && 'ghcr.io/openwrt/sdk@sha256:1e199d8840e34a0aaf1362d1d1b7e754cee94a0f0c675690d51d89ec303492bf' || format('ghcr.io/openwrt/sdk:{0}', matrix.arch) }}
 
       - name: Create compress files
         continue-on-error: true
         run: |
-          tar -zcvf ${{ env.ARCH }}.tar.gz -C bin/packages/${{ env.EFFECTIVE_ARCH }}/ packages_ci
+          tar -zcvf ${{ env.NEW_ARCH }}.tar.gz -C bin/packages/${{ env.EFFECTIVE_ARCH }}/ packages_ci
           echo "latest_release=$(TZ='Asia/Shanghai' date +%Y-%m-%d)" >>$GITHUB_ENV
 
       - name: Create release
@@ -103,7 +108,7 @@ jobs:
           commit: main
           replacesArtifacts: true
           token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: ${{ env.ARCH }}.tar.gz
+          artifacts: ${{ env.NEW_ARCH }}.tar.gz
 
       - name: Upload FTP
         uses: sbwml/FTP-Deploy-Action@master
