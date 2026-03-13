@@ -54,6 +54,11 @@ jobs:
           - openwrt-25.12
 
     steps:
+      - name: Free disk space
+        uses: sbwml/actions@free-disk
+        with:
+          build-mount-path: /builder
+
       - name: Clone
         run: |
           git clone https://github.com/sbwml/openwrt_helloworld helloworld
