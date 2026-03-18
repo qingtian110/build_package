@@ -14,6 +14,38 @@ jobs:
       fail-fast: false
       matrix:
         arch:
+          - aarch64_cortex-a53
+          - aarch64_cortex-a72
+          - aarch64_cortex-a76
+          - aarch64_generic
+          - arm_arm1176jzf-s_vfp
+          - arm_arm926ej-s
+          - arm_cortex-a15_neon-vfpv4
+          - arm_cortex-a5_vfpv4
+          - arm_cortex-a7
+          - arm_cortex-a7_neon-vfpv4
+          - arm_cortex-a7_vfpv4
+          - arm_cortex-a8_vfpv3
+          - arm_cortex-a9
+          - arm_cortex-a9_neon
+          - arm_cortex-a9_vfpv3-d16
+          - arm_fa526
+          - arm_xscale
+          - armeb_xscale
+          - i386_pentium-mmx
+          - i386_pentium4
+          - loongarch64_generic
+          - mips64_mips64r2
+          - mips64_octeonplus
+          - mips64el_mips64r2
+          - mips_24kc
+          - mips_4kec
+          - mips_mips32
+          - mipsel_24kc
+          - mipsel_24kc_24kf
+          - mipsel_74kc
+          - mipsel_mips32
+          - riscv64_riscv64
           - x86_64
         tag:
           - openwrt-24.10
@@ -59,26 +91,25 @@ jobs:
       - name: Upload artifacts
         uses: actions/upload-artifact@v6
         with:
-          name: ${{ matrix.model }}-${{ matrix.tag.version }}
+          name: ${{ env.ARCH }}
           path: ${{ env.ARCH }}.tar.gz
 
       - name: Upload FTP (lftp)
         if: ${{ env.SKIP_BUILD == '0' }}
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y lftp
-          lftp -e "
-            set ftp:ssl-allow no;
-            mirror --reverse \
-                   --only-newer \
-                   --verbose \
-                   --no-perms \
-                   --exclude-glob .git* \
-                   bin/packages/${{ env.EFFECTIVE_ARCH }}/packages_ci/ \
-                   ${{ matrix.tag }}/${{ env.EFFECTIVE_ARCH }}/;
-            bye
-          " -u "${{ secrets.ftp_username }},${{ secrets.ftp_password }}" ${{ secrets.ftp_address }}
-
+        uses: matteodf/lftp-upload@v1
+        continue-on-error: true
+        with:
+          host: ${{ secrets.ftp_address }}
+          username: ${{ secrets.ftp_username }}
+          password: ${{ secrets.ftp_password }}
+          forceSsl: "false"
+          localDir: bin/packages/${{ env.EFFECTIVE_ARCH }}/packages_ci/
+          remoteDir: ${{ matrix.tag }}/${{ env.EFFECTIVE_ARCH }}/
+          timeout: "120"
+          retries: "5"
+          multiplier: "2.0"
+          baseInterval: "10"
+          pConn: "10"
 
       - name: Create metadata (ipk)
         if: ${{ env.SKIP_BUILD == '0' && matrix.tag == 'openwrt-24.10' }}
