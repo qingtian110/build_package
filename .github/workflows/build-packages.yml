@@ -103,7 +103,6 @@ jobs:
           PACKAGES: ${{ env.NEED_BUILD }}
           NO_REFRESH_CHECK: true
           IGNORE_ERRORS: true
-          V: s
 
       - name: Upload FTP (lftp)
         if: ${{ env.SKIP_BUILD == '0' }}
