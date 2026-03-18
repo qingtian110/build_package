@@ -22,9 +22,6 @@ jobs:
           - openwrt-25.12
 
     steps:
-      - name: Free disk space
-        uses: sbwml/actions@free-disk
-
       - name: Checkout helloworld
         uses: actions/checkout@v6
         with:
@@ -45,11 +42,12 @@ jobs:
 
       - name: Diff tree
         run: |
+          ls
           sudo timedatectl set-timezone 'Asia/Shanghai'
           diff_tree="$(git -C helloworld log --since="yesterday" --until="now" --pretty=format:"%H" | xargs -I{} git -C helloworld diff-tree --no-commit-id --name-only -r {} | cut -d/ -f1 | sort -u | tr '\n' ' ' | sed 's/ $//') v2ray-geodata vmlinux-btf"
           echo "NEED_BUILD=$diff_tree" >> $GITHUB_ENV
           git -C helloworld log --since="yesterday" --until="now" --pretty=format:"%H" | xargs -I{} git -C helloworld diff-tree --no-commit-id --name-only -r {} | cut -d/ -f1 | sort -u | tr '\n' ' ' | sed 's/ $//'
-          echo ${{ env.NEED_BUILD }}
+          echo $diff_tree
 
       - name: Compute ARCH / effective arch
         run: |
