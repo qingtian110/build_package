@@ -57,11 +57,29 @@ jobs:
       - name: Free disk space
         uses: sbwml/actions@free-disk
 
-      - name: Clone
+      - name: Checkout helloworld
+        uses: actions/checkout@v6
+        with:
+          repository: sbwml/openwrt_helloworld
+          path: helloworld
+
+      - name: Checkout mosdns
+        uses: actions/checkout@v6
+        with:
+          repository: sbwml/luci-app-mosdns
+          path: mosdns
+
+      - name: Checkout node
+        uses: actions/checkout@v6
+        with:
+          repository: sbwml/feeds_packages_lang_node-prebuilt
+          path: node
+
+      - name: Diff tree
         run: |
-          git clone https://github.com/sbwml/openwrt_helloworld helloworld
-          git clone https://github.com/sbwml/luci-app-mosdns mosdns
-          git clone https://github.com/sbwml/feeds_packages_lang_node-prebuilt node
+          sudo timedatectl set-timezone 'Asia/Shanghai'
+          diff_tree="$(git -C helloworld log --since="yesterday" --until="now" --pretty=format:"%H" | xargs -I{} git -C helloworld diff-tree --no-commit-id --name-only -r {} | cut -d/ -f1 | sort -u | tr '\n' ' ' | sed 's/ $//') v2ray-geodata vmlinux-btf"
+          echo "NEED_BUILD=$diff_tree" >> $GITHUB_ENV
 
       - name: Compute ARCH / effective arch
         run: |
@@ -81,40 +99,27 @@ jobs:
         uses: sbwml/openwrt-gh-action-sdk@helloworld
         env:
           FEEDNAME: packages_ci
-          PACKAGES: vmlinux-btf chinadns-ng dae daed dns2socks dns2socks-rust dns2tcp geoview hysteria ipt2socks lua-neturl luci-app-dae luci-app-daed luci-app-homeproxy luci-app-mosdns luci-app-nikki luci-app-openclash luci-app-passwall luci-app-passwall2 luci-app-ssr-plus microsocks mosdns naiveproxy node pdnsd redsocks2 shadow-tls shadowsocks-libev shadowsocks-rust shadowsocksr-libev simple-obfs sing-box tcping trojan trojan-plus tuic-client v2ray-core v2ray-geodata v2ray-plugin xray-core xray-plugin
+          PACKAGES: ${{ env.NEED_BUILD }}
           NO_REFRESH_CHECK: true
           IGNORE_ERRORS: true
+          V: s
 
-      - name: Create compress files
+      - name: Upload FTP (lftp)
         if: ${{ env.SKIP_BUILD == '0' }}
+        uses: matteodf/lftp-upload@v1
         continue-on-error: true
-        run: |
-          tar -zcvf ${{ env.ARCH }}.tar.gz -C bin/packages/${{ env.EFFECTIVE_ARCH }}/ packages_ci
-          echo "latest_release=$(TZ='Asia/Shanghai' date +%Y-%m-%d)" >>$GITHUB_ENV
-
-      - name: Create release
-        if: ${{ env.SKIP_BUILD == '0' }}
-        continue-on-error: true
-        uses: ncipollo/release-action@v1
         with:
-          name: ${{ env.latest_release }}
-          allowUpdates: true
-          tag: ${{ env.latest_release }}
-          commit: main
-          replacesArtifacts: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: ${{ env.ARCH }}.tar.gz
-
-      - name: Upload FTP
-        if: ${{ env.SKIP_BUILD == '0' }}
-        uses: sbwml/FTP-Deploy-Action@master
-        with:
-          server: ${{ secrets.ftp_address }}
+          host: ${{ secrets.ftp_address }}
           username: ${{ secrets.ftp_username }}
           password: ${{ secrets.ftp_password }}
-          server-dir: ${{ matrix.tag }}/${{ env.EFFECTIVE_ARCH }}/
-          local-dir: bin/packages/${{ env.EFFECTIVE_ARCH }}/packages_ci/
-          dangerous-clean-slate: true
+          forceSsl: "false"
+          localDir: bin/packages/${{ env.EFFECTIVE_ARCH }}/packages_ci/
+          remoteDir: ${{ matrix.tag }}/${{ env.EFFECTIVE_ARCH }}/
+          timeout: "120"
+          retries: "5"
+          multiplier: "2.0"
+          baseInterval: "10"
+          pConn: "10"
 
       - name: Create metadata (ipk)
         if: ${{ env.SKIP_BUILD == '0' && matrix.tag == 'openwrt-24.10' }}
@@ -127,3 +132,4 @@ jobs:
         run: |
           sshpass -p ${{ secrets.server_password }} ssh -o StrictHostKeyChecking=no root@${{ secrets.ftp_address }} >/dev/null 2>&1
           sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/apk-sign ${{ matrix.tag }} ${{ env.EFFECTIVE_ARCH }}"
+
