@@ -27,6 +27,7 @@ jobs:
         with:
           repository: sbwml/openwrt_helloworld
           path: helloworld
+          fetch-depth: 0
 
       - name: Checkout mosdns
         uses: actions/checkout@v6
@@ -48,56 +49,3 @@ jobs:
           echo "NEED_BUILD=$diff_tree" >> $GITHUB_ENV
           git -C helloworld log --since="yesterday" --until="now" --pretty=format:"%H" | xargs -I{} git -C helloworld diff-tree --no-commit-id --name-only -r {} | cut -d/ -f1 | sort -u | tr '\n' ' ' | sed 's/ $//'
           echo $diff_tree
-
-      - name: Compute ARCH / effective arch
-        run: |
-          echo "SKIP_BUILD=0" >> $GITHUB_ENV
-          if [ "${{ matrix.tag }}" = "openwrt-25.12" ] && [ "${{ matrix.arch }}" = "riscv64_riscv64" ]; then
-            echo "EFFECTIVE_ARCH=riscv64_generic" >> $GITHUB_ENV
-            echo "ARCH=riscv64_generic-${{ matrix.tag }}" >> $GITHUB_ENV
-          elif [ "${{ matrix.tag }}" = "openwrt-25.12" ] && [ "${{ matrix.arch }}" = "mips_4kec" ]; then
-            echo "SKIP_BUILD=1" >> $GITHUB_ENV
-          else
-            echo "EFFECTIVE_ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
-            echo "ARCH=${{ matrix.arch }}-${{ matrix.tag }}" >> $GITHUB_ENV
-          fi
-
-      - name: Build Packages
-        if: ${{ env.SKIP_BUILD == '0' }}
-        uses: sbwml/openwrt-gh-action-sdk@helloworld
-        env:
-          FEEDNAME: packages_ci
-          PACKAGES: ${{ env.NEED_BUILD }}
-          NO_REFRESH_CHECK: true
-          IGNORE_ERRORS: true
-          V: s
-
-      - name: Upload FTP (lftp)
-        if: ${{ env.SKIP_BUILD == '0' }}
-        uses: matteodf/lftp-upload@v1
-        continue-on-error: true
-        with:
-          host: ${{ secrets.ftp_address }}
-          username: ${{ secrets.ftp_username }}
-          password: ${{ secrets.ftp_password }}
-          forceSsl: "false"
-          localDir: bin/packages/${{ env.EFFECTIVE_ARCH }}/packages_ci/
-          remoteDir: ${{ matrix.tag }}/${{ env.EFFECTIVE_ARCH }}/
-          timeout: "120"
-          retries: "5"
-          multiplier: "2.0"
-          baseInterval: "10"
-          pConn: "10"
-
-      - name: Create metadata (ipk)
-        if: ${{ env.SKIP_BUILD == '0' && matrix.tag == 'openwrt-24.10' }}
-        run: |
-          sshpass -p ${{ secrets.server_password }} ssh -o StrictHostKeyChecking=no root@${{ secrets.ftp_address }} >/dev/null 2>&1
-          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/opkg-sign ${{ matrix.tag }} ${{ env.EFFECTIVE_ARCH }}"
-
-      - name: Create metadata (apk)
-        if: ${{ env.SKIP_BUILD == '0' && matrix.tag == 'openwrt-25.12' }}
-        run: |
-          sshpass -p ${{ secrets.server_password }} ssh -o StrictHostKeyChecking=no root@${{ secrets.ftp_address }} >/dev/null 2>&1
-          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/apk-sign ${{ matrix.tag }} ${{ env.EFFECTIVE_ARCH }}"
-
