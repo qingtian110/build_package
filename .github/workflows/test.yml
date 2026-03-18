@@ -56,18 +56,11 @@ jobs:
           tar -zcvf ${{ env.ARCH }}.tar.gz -C bin/packages/${{ env.EFFECTIVE_ARCH }}/ packages_ci
           echo "latest_release=$(TZ='Asia/Shanghai' date +%Y-%m-%d)" >>$GITHUB_ENV
 
-      - name: Create release
-        if: ${{ env.SKIP_BUILD == '0' }}
-        continue-on-error: true
-        uses: ncipollo/release-action@v1
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v6
         with:
-          name: ${{ env.latest_release }}
-          allowUpdates: true
-          tag: ${{ env.latest_release }}
-          commit: main
-          replacesArtifacts: true
-          token: ${{ secrets.GITHUB_TOKEN }}
-          artifacts: ${{ env.ARCH }}.tar.gz
+          name: ${{ matrix.model }}-${{ matrix.tag.version }}
+          path: ${{ env.ARCH }}.tar.gz
 
       - name: Upload FTP (lftp)
         if: ${{ env.SKIP_BUILD == '0' }}
