@@ -44,7 +44,7 @@ jobs:
         uses: sbwml/openwrt-gh-action-sdk@helloworld
         env:
           FEEDNAME: packages_ci
-          PACKAGES: vmlinux-btf chinadns-ng dae daed dns2socks dns2socks-rust dns2tcp geoview hysteria ipt2socks lua-neturl luci-app-daed luci-app-homeproxy luci-app-mosdns luci-app-nikki luci-app-openclash luci-app-passwall luci-app-passwall2 luci-app-ssr-plus microsocks mosdns naiveproxy node pdnsd redsocks2 shadow-tls shadowsocks-libev shadowsocks-rust shadowsocksr-libev simple-obfs sing-box tcping trojan trojan-plus tuic-client v2ray-core v2ray-geodata v2ray-plugin xray-core xray-plugin
+          PACKAGES: dns2socks
           NO_REFRESH_CHECK: true
           IGNORE_ERRORS: true
           V: s
@@ -69,16 +69,23 @@ jobs:
           token: ${{ secrets.GITHUB_TOKEN }}
           artifacts: ${{ env.ARCH }}.tar.gz
 
-      - name: Upload FTP
+      - name: Upload FTP (lftp)
         if: ${{ env.SKIP_BUILD == '0' }}
-        uses: sbwml/FTP-Deploy-Action@master
-        with:
-          server: ${{ secrets.ftp_address }}
-          username: ${{ secrets.ftp_username }}
-          password: ${{ secrets.ftp_password }}
-          server-dir: ${{ matrix.tag }}/${{ env.EFFECTIVE_ARCH }}/
-          local-dir: bin/packages/${{ env.EFFECTIVE_ARCH }}/packages_ci/
-          dangerous-clean-slate: false
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y lftp
+          lftp -e "
+            set ftp:ssl-allow no;
+            mirror --reverse \
+                   --only-newer \
+                   --verbose \
+                   --no-perms \
+                   --exclude-glob .git* \
+                   bin/packages/${{ env.EFFECTIVE_ARCH }}/packages_ci/ \
+                   ${{ matrix.tag }}/${{ env.EFFECTIVE_ARCH }}/;
+            bye
+          " -u "${{ secrets.ftp_username }},${{ secrets.ftp_password }}" ${{ secrets.ftp_address }}
+
 
       - name: Create metadata (ipk)
         if: ${{ env.SKIP_BUILD == '0' && matrix.tag == 'openwrt-24.10' }}
