@@ -17,11 +17,46 @@ jobs:
       matrix:
         arch:
           - aarch64_cortex-a53
+          - aarch64_cortex-a72
+          - aarch64_cortex-a76
+          - aarch64_generic
+          - arm_arm1176jzf-s_vfp
+          - arm_arm926ej-s
+          - arm_cortex-a15_neon-vfpv4
+          - arm_cortex-a5_vfpv4
+          - arm_cortex-a7
+          - arm_cortex-a7_neon-vfpv4
+          - arm_cortex-a7_vfpv4
+          - arm_cortex-a8_vfpv3
+          - arm_cortex-a9
+          - arm_cortex-a9_neon
+          - arm_cortex-a9_vfpv3-d16
+          - arm_fa526
+          - arm_xscale
+          - armeb_xscale
+          - i386_pentium-mmx
+          - i386_pentium4
+          - loongarch64_generic
+          - mips64_mips64r2
+          - mips64_octeonplus
+          - mips64el_mips64r2
+          - mips_24kc
+          - mips_4kec
+          - mips_mips32
+          - mipsel_24kc
+          - mipsel_24kc_24kf
+          - mipsel_74kc
+          - mipsel_mips32
+          - riscv64_riscv64
+          - x86_64
         tag:
           - openwrt-24.10
           - openwrt-25.12
 
     steps:
+      - name: Free disk space
+        uses: sbwml/actions@free-disk
+
       - name: Checkout helloworld
         uses: actions/checkout@v6
         with:
@@ -43,9 +78,58 @@ jobs:
 
       - name: Diff tree
         run: |
-          ls
           sudo timedatectl set-timezone 'Asia/Shanghai'
           diff_tree="$(git -C helloworld log --since="yesterday" --until="now" --pretty=format:"%H" | xargs -I{} git -C helloworld diff-tree --no-commit-id --name-only -r {} | cut -d/ -f1 | sort -u | tr '\n' ' ' | sed 's/ $//') v2ray-geodata vmlinux-btf"
           echo "NEED_BUILD=$diff_tree" >> $GITHUB_ENV
-          git -C helloworld log --since="yesterday" --until="now" --pretty=format:"%H" | xargs -I{} git -C helloworld diff-tree --no-commit-id --name-only -r {} | cut -d/ -f1 | sort -u | tr '\n' ' ' | sed 's/ $//'
-          echo $diff_tree
+
+      - name: Compute ARCH / effective arch
+        run: |
+          echo "SKIP_BUILD=0" >> $GITHUB_ENV
+          if [ "${{ matrix.tag }}" = "openwrt-25.12" ] && [ "${{ matrix.arch }}" = "riscv64_riscv64" ]; then
+            echo "EFFECTIVE_ARCH=riscv64_generic" >> $GITHUB_ENV
+            echo "ARCH=riscv64_generic-${{ matrix.tag }}" >> $GITHUB_ENV
+          elif [ "${{ matrix.tag }}" = "openwrt-25.12" ] && [ "${{ matrix.arch }}" = "mips_4kec" ]; then
+            echo "SKIP_BUILD=1" >> $GITHUB_ENV
+          else
+            echo "EFFECTIVE_ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
+            echo "ARCH=${{ matrix.arch }}-${{ matrix.tag }}" >> $GITHUB_ENV
+          fi
+
+      - name: Build Packages
+        if: ${{ env.SKIP_BUILD == '0' }}
+        uses: sbwml/openwrt-gh-action-sdk@helloworld
+        env:
+          FEEDNAME: packages_ci
+          PACKAGES: ${{ env.NEED_BUILD }}
+          NO_REFRESH_CHECK: true
+          IGNORE_ERRORS: true
+          V: s
+
+      - name: Upload FTP (lftp)
+        if: ${{ env.SKIP_BUILD == '0' }}
+        uses: matteodf/lftp-upload@v1
+        continue-on-error: true
+        with:
+          host: ${{ secrets.ftp_address }}
+          username: ${{ secrets.ftp_username }}
+          password: ${{ secrets.ftp_password }}
+          forceSsl: "false"
+          localDir: bin/packages/${{ env.EFFECTIVE_ARCH }}/packages_ci/
+          remoteDir: ${{ matrix.tag }}/${{ env.EFFECTIVE_ARCH }}/
+          timeout: "120"
+          retries: "5"
+          multiplier: "2.0"
+          baseInterval: "10"
+          pConn: "10"
+
+      - name: Create metadata (ipk)
+        if: ${{ env.SKIP_BUILD == '0' && matrix.tag == 'openwrt-24.10' }}
+        run: |
+          sshpass -p ${{ secrets.server_password }} ssh -o StrictHostKeyChecking=no root@${{ secrets.ftp_address }} >/dev/null 2>&1
+          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/opkg-sign ${{ matrix.tag }} ${{ env.EFFECTIVE_ARCH }}"
+
+      - name: Create metadata (apk)
+        if: ${{ env.SKIP_BUILD == '0' && matrix.tag == 'openwrt-25.12' }}
+        run: |
+          sshpass -p ${{ secrets.server_password }} ssh -o StrictHostKeyChecking=no root@${{ secrets.ftp_address }} >/dev/null 2>&1
+          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/apk-sign ${{ matrix.tag }} ${{ env.EFFECTIVE_ARCH }}"
