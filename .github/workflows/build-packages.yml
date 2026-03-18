@@ -97,6 +97,7 @@ jobs:
             echo "EFFECTIVE_ARCH=${{ matrix.arch }}" >> $GITHUB_ENV
             echo "ARCH=${{ matrix.arch }}-${{ matrix.tag }}" >> $GITHUB_ENV
           fi
+          [ "${{ matrix.arch }}" = "loongarch64_generic" ] && sed -i 's/+chinadns-ng//g' helloworld/luci-app-passwall/Makefile
 
       - name: Build Packages
         if: ${{ env.SKIP_BUILD == '0' }}
