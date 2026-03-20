@@ -77,12 +77,13 @@ jobs:
           path: node
 
       - name: Diff tree
+        continue-on-error: true
         run: |
           sudo timedatectl set-timezone 'Asia/Shanghai'
           kernel_version=$(curl -s https://raw.githubusercontent.com/openwrt/openwrt/refs/heads/openwrt-25.12/target/linux/generic/kernel-6.12 | awk '/LINUX_VERSION-/ {match($0,/LINUX_VERSION-([0-9]+\.[0-9]+) = \.([0-9]+)/,m);print m[1]"."m[2]}')
           vmlinux_version=$(curl -s https://opkg.cooluc.com/openwrt-25.12/aarch64_generic/index.json | grep '"vmlinux-btf"' | sed -E 's/.*"vmlinux-btf": *"([^"]+)".*/\1/')
-          [ "$kernel_version" != "$vmlinux_version" ] && vmlinux="vmlinux-btf"
-          diff_tree="$(git -C helloworld log --since="yesterday" --until="now" --pretty=format:"%H" | xargs -I{} git -C helloworld diff-tree --no-commit-id --name-only -r {} | cut -d/ -f1 | sort -u | tr '\n' ' ' | sed 's/ $//') v2ray-geodata $vmlinux"
+          [ "$kernel_version" != "$vmlinux_version" ] && vmlinux=" vmlinux-btf" || vmlinux=""
+          diff_tree="$(git -C helloworld log --since="yesterday" --until="now" --pretty=format:"%H" | xargs -I{} git -C helloworld diff-tree --no-commit-id --name-only -r {} | cut -d/ -f1 | sort -u | tr '\n' ' ' | sed 's/ $//') v2ray-geodata$vmlinux"
           diff_tree_new="${diff_tree//  / }"
           echo "NEED_BUILD=$diff_tree_new" >> $GITHUB_ENV
 
