@@ -77,7 +77,6 @@ jobs:
           path: node
 
       - name: Diff tree
-        continue-on-error: true
         run: |
           sudo timedatectl set-timezone 'Asia/Shanghai'
           kernel_version=$(curl -s https://raw.githubusercontent.com/openwrt/openwrt/refs/heads/openwrt-25.12/target/linux/generic/kernel-6.12 | awk '/LINUX_VERSION-/ {match($0,/LINUX_VERSION-([0-9]+\.[0-9]+) = \.([0-9]+)/,m);print m[1]"."m[2]}')
@@ -100,7 +99,6 @@ jobs:
             echo "ARCH=${{ matrix.arch }}-${{ matrix.tag }}" >> $GITHUB_ENV
           fi
           [ "${{ matrix.arch }}" = "loongarch64_generic" ] && sed -i 's/+chinadns-ng//g' helloworld/luci-app-passwall/Makefile
-          [ -z "${{ env.NEED_BUILD }}" ] && echo "SKIP_BUILD=1" >> $GITHUB_ENV
 
       - name: Build Packages
         if: ${{ env.SKIP_BUILD == '0' }}
