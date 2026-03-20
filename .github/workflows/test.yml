@@ -14,7 +14,13 @@ jobs:
       fail-fast: false
       matrix:
         arch:
-          - loongarch64_generic
+          - aarch64_cortex-a53
+          - aarch64_cortex-a72
+          - aarch64_cortex-a76
+          - aarch64_generic
+          - i386_pentium-mmx
+          - i386_pentium4
+          - x86_64
         tag:
           - openwrt-24.10
           - openwrt-25.12
@@ -45,10 +51,9 @@ jobs:
         uses: sbwml/openwrt-gh-action-sdk@helloworld
         env:
           FEEDNAME: packages_ci
-          PACKAGES: luci-app-passwall
+          PACKAGES: daed
           NO_REFRESH_CHECK: true
           IGNORE_ERRORS: true
-          V: s
 
       - name: Create compress files
         if: ${{ env.SKIP_BUILD == '0' }}
