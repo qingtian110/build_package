@@ -54,9 +54,6 @@ jobs:
           - openwrt-25.12
 
     steps:
-      - name: Free disk space
-        uses: sbwml/actions@free-disk
-
       - name: Checkout helloworld
         uses: actions/checkout@v6
         with:
