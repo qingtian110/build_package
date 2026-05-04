@@ -14,16 +14,30 @@ jobs:
       fail-fast: false
       matrix:
         arch:
+          - aarch64_cortex-a53
+          - aarch64_cortex-a72
+          - aarch64_cortex-a76
           - aarch64_generic
+          - arm_arm1176jzf-s_vfp
+          - arm_cortex-a15_neon-vfpv4
+          - arm_cortex-a5_vfpv4
+          - arm_cortex-a7_neon-vfpv4
+          - arm_cortex-a7_vfpv4
+          - arm_cortex-a8_vfpv3
+          - arm_cortex-a9_neon
+          - arm_cortex-a9_vfpv3-d16
+          - i386_pentium-mmx
+          - i386_pentium4
+          - x86_64
         tag:
-          - openwrt-24.10
+          - openwrt-25.12
 
     steps:
       - name: Clone
         run: |
           git clone https://github.com/sbwml/openwrt_helloworld helloworld
           git clone https://github.com/sbwml/luci-app-mosdns mosdns
-          git clone https://github.com/sbwml/feeds_packages_lang_node-prebuilt node
+          git clone https://github.com/sbwml/feeds_packages_lang_node node
           sed -i 's/+chinadns-ng//g' helloworld/luci-app-passwall/Makefile
 
       - name: Compute ARCH / effective arch
@@ -44,7 +58,7 @@ jobs:
         uses: sbwml/openwrt-gh-action-sdk@helloworld
         env:
           FEEDNAME: packages_ci
-          PACKAGES: dae
+          PACKAGES: node
           NO_REFRESH_CHECK: true
           IGNORE_ERRORS: true
 
@@ -60,3 +74,32 @@ jobs:
         with:
           name: ${{ env.ARCH }}
           path: ${{ env.ARCH }}.tar.gz
+
+      - name: Upload FTP (lftp)
+        if: ${{ env.SKIP_BUILD == '0' }}
+        uses: matteodf/lftp-upload@v1
+        continue-on-error: true
+        with:
+          host: ${{ secrets.ftp_address }}
+          username: ${{ secrets.ftp_username }}
+          password: ${{ secrets.ftp_password }}
+          forceSsl: "false"
+          localDir: bin/packages/${{ env.EFFECTIVE_ARCH }}/packages_ci/
+          remoteDir: ${{ matrix.tag }}/${{ env.EFFECTIVE_ARCH }}/
+          timeout: "120"
+          retries: "5"
+          multiplier: "2.0"
+          baseInterval: "10"
+          pConn: "10"
+
+      - name: Create metadata (ipk)
+        if: ${{ env.SKIP_BUILD == '0' && matrix.tag == 'openwrt-24.10' }}
+        run: |
+          sshpass -p ${{ secrets.server_password }} ssh -o StrictHostKeyChecking=no root@${{ secrets.ftp_address }} >/dev/null 2>&1
+          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/opkg-sign ${{ matrix.tag }} ${{ env.EFFECTIVE_ARCH }}"
+
+      - name: Create metadata (apk)
+        if: ${{ env.SKIP_BUILD == '0' && matrix.tag == 'openwrt-25.12' }}
+        run: |
+          sshpass -p ${{ secrets.server_password }} ssh -o StrictHostKeyChecking=no root@${{ secrets.ftp_address }} >/dev/null 2>&1
+          sshpass -p ${{ secrets.server_password }} ssh root@${{ secrets.ftp_address }} "/opt/sbin/apk-sign ${{ matrix.tag }} ${{ env.EFFECTIVE_ARCH }}"
