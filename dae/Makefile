@@ -58,12 +58,9 @@ define Package/dae/config
 
 	config DAE_USE_VMLINUX_BTF
 	  bool "BPF CO-RE (vmlinux-btf)"
-	  select PACKAGE_vmlinux-btf
 
-	# You need enable KERNEL_DEBUG_INFO_BTF and KERNEL_BPF_EVENTS
 	config DAE_USE_BPF_DEPENDS
 	  bool "Kernel DEBUG_INFO_BTF (bpf-depends)"
-	  select PACKAGE_kmod-xdp-sockets-diag
   endchoice
 endef
 
@@ -73,6 +70,14 @@ define Package/dae
   DEPENDS:=$(GO_ARCH_DEPENDS) \
     +ca-bundle +kmod-sched-core +kmod-sched-bpf \
     +kmod-veth +v2ray-geoip +v2ray-geosite
+
+  ifeq ($(CONFIG_DAE_USE_VMLINUX_BTF),y)
+    DEPENDS+=+vmlinux-btf
+  endif
+  # You need enable KERNEL_DEBUG_INFO_BTF and KERNEL_BPF_EVENTS
+  ifeq ($(CONFIG_DAE_USE_BPF_DEPENDS),y)
+    DEPENDS+=$(BPF_DEPENDS) +kmod-xdp-sockets-diag
+  endif
 endef
 
 define Package/dae/description
