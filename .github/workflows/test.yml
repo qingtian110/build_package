@@ -14,9 +14,10 @@ jobs:
       fail-fast: false
       matrix:
         arch:
+          - arm_cortex-a9
           - aarch64_generic
+          - mips_24kc
         tag:
-          - openwrt-24.10
           - openwrt-25.12
 
     steps:
