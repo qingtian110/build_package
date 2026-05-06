@@ -1,0 +1,40 @@
+--- a/trace/kern/trace.c
++++ b/trace/kern/trace.c
+@@ -248,7 +248,16 @@ KPROBE_SKB_AT(1)
+ KPROBE_SKB_AT(2)
+ KPROBE_SKB_AT(3)
+ KPROBE_SKB_AT(4)
++
++#if defined(bpf_target_arm)
++SEC("kprobe/skb-5")
++int kprobe_skb_5(struct pt_regs *ctx)
++{
++	return 0;
++}
++#else
+ KPROBE_SKB_AT(5)
++#endif
+ 
+ SEC("kprobe/skb_lifetime_termination")
+ int kprobe_skb_lifetime_termination(struct pt_regs *ctx)
+--- a/trace/trace.go
++++ b/trace/trace.go
+@@ -15,6 +15,7 @@ import (
+ 	"fmt"
+ 	"net"
+ 	"os"
++	"runtime"
+ 	"slices"
+ 	"syscall"
+ 	"time"
+@@ -213,7 +214,9 @@ func attachBpfToTargets(objs *bpfObjects
+ 		case 4:
+ 			kp, err = link.Kprobe(fn, objs.KprobeSkb4, nil)
+ 		case 5:
+-			kp, err = link.Kprobe(fn, objs.KprobeSkb5, nil)
++			if runtime.GOARCH != "arm" {
++				kp, err = link.Kprobe(fn, objs.KprobeSkb5, nil)
++			}
+ 		}
+ 		if err != nil {
+ 			logrus.Debugf("failed to attach kprobe to %s: %+v\n", fn, err)
