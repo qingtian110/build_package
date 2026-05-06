@@ -20,12 +20,13 @@ jobs:
           - openwrt-25.12
 
     steps:
+      - name: Checkout helloworld
+        uses: actions/checkout@v6
+
       - name: Clone
         run: |
           git clone https://github.com/sbwml/openwrt_helloworld helloworld
           rm -rf helloworld/{*daed*,dae,vmlinux-btf}
-          mv dae helloworld/
-          mv vmlinux-btf helloworld/
 
       - name: Compute ARCH / effective arch
         run: |
