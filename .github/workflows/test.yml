@@ -54,11 +54,22 @@ jobs:
     steps:
       - name: Checkout helloworld
         uses: actions/checkout@v6
+        with:
+          repository: sbwml/openwrt_helloworld
+          path: helloworld
+          fetch-depth: 0
 
-      - name: Clone
-        run: |
-          git clone https://github.com/sbwml/openwrt_helloworld helloworld
-          rm -rf helloworld/{*daed*,dae,vmlinux-btf}
+      - name: Checkout mosdns
+        uses: actions/checkout@v6
+        with:
+          repository: sbwml/luci-app-mosdns
+          path: mosdns
+
+      - name: Checkout node
+        uses: actions/checkout@v6
+        with:
+          repository: sbwml/feeds_packages_lang_node
+          path: node
 
       - name: Compute ARCH / effective arch
         run: |
@@ -78,7 +89,7 @@ jobs:
         uses: sbwml/openwrt-gh-action-sdk@helloworld
         env:
           FEEDNAME: packages_ci
-          PACKAGES: dae hysteria naiveproxy
+          PACKAGES: node luci-app-mosdns lua-neturl
           NO_REFRESH_CHECK: true
           IGNORE_ERRORS: true
 
