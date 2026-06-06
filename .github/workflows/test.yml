@@ -48,6 +48,7 @@ jobs:
           - riscv64_riscv64
           - x86_64
         tag:
+          - openwrt-24.10
           - openwrt-25.12
 
     steps:
@@ -88,7 +89,7 @@ jobs:
         uses: sbwml/openwrt-gh-action-sdk@helloworld
         env:
           FEEDNAME: packages_ci
-          PACKAGES: kcptun luci-app-mosdns
+          PACKAGES: mosdns luci-app-mosdns
           NO_REFRESH_CHECK: true
           IGNORE_ERRORS: true
 
