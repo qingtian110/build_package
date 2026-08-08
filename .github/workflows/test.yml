@@ -71,6 +71,12 @@ jobs:
           repository: sbwml/feeds_packages_lang_node
           path: node
 
+      - name: Checkout expect
+        uses: actions/checkout@v6
+        with:
+          repository: sbwml/package_new_expect
+          path: expect
+
       - name: Compute ARCH / effective arch
         run: |
           echo "SKIP_BUILD=0" >> $GITHUB_ENV
@@ -89,7 +95,7 @@ jobs:
         uses: sbwml/openwrt-gh-action-sdk@helloworld
         env:
           FEEDNAME: packages_ci
-          PACKAGES: node
+          PACKAGES: expect
           NO_REFRESH_CHECK: true
           IGNORE_ERRORS: true
           V: s
