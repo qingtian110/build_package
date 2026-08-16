@@ -15,10 +15,8 @@ jobs:
       matrix:
         arch:
           - aarch64_generic
-          - x86_64
         tag:
-          - openwrt-24.10
-          - openwrt-25.12
+          - openwrt-21.02
 
     steps:
       - name: Checkout helloworld
@@ -40,12 +38,6 @@ jobs:
           repository: sbwml/feeds_packages_lang_node
           path: node
 
-      - name: Checkout expect
-        uses: actions/checkout@v6
-        with:
-          repository: qingtian110/package_new_expect
-          path: expect
-
       - name: Compute ARCH / effective arch
         run: |
           echo "SKIP_BUILD=0" >> $GITHUB_ENV
@@ -61,7 +53,7 @@ jobs:
 
       - name: Build Packages
         if: ${{ env.SKIP_BUILD == '0' }}
-        uses: qingtian110/openwrt-gh-action-sdk@helloworld
+        uses: sbwml/openwrt-gh-action-sdk@helloworld
         env:
           FEEDNAME: packages_ci
           PACKAGES: luci-app-passwall xray-core sing-box
